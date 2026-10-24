@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -8,10 +9,10 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = async (event) => {
     event.preventDefault();
-
     setMessage("");
     setLoading(true);
 
@@ -23,10 +24,7 @@ const Login = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            email,
-            password,
-          }),
+          body: JSON.stringify({ email, password }),
         }
       );
 
@@ -37,20 +35,13 @@ const Login = () => {
       }
 
       if (!data.token) {
-        throw new Error("Login succeeded, but no token was returned.");
+        throw new Error("The server did not return a token.");
       }
 
-      localStorage.setItem("token", data.token);
-
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-      }
-
+      login(data.token, data.user || null);
       navigate("/dashboard");
-    } catch (err) {
-      setMessage(
-        err.message || "Unable to connect to the server."
-      );
+    } catch (error) {
+      setMessage(error.message || "Unable to connect to the server.");
     } finally {
       setLoading(false);
     }
@@ -63,15 +54,12 @@ const Login = () => {
           <div className="card shadow border-0">
             <div className="card-body p-4 p-md-5">
               <h2 className="text-center mb-2">Welcome Back</h2>
-
               <p className="text-center text-muted mb-4">
                 Log in to your Workasana account.
               </p>
 
               {message && (
-                <div className="alert alert-danger" role="alert">
-                  {message}
-                </div>
+                <div className="alert alert-danger">{message}</div>
               )}
 
               <form onSubmit={handleLogin}>
@@ -79,12 +67,10 @@ const Login = () => {
                   <label htmlFor="email" className="form-label">
                     Email Address
                   </label>
-
                   <input
                     id="email"
                     type="email"
                     className="form-control"
-                    placeholder="Enter your email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     required
@@ -95,12 +81,10 @@ const Login = () => {
                   <label htmlFor="password" className="form-label">
                     Password
                   </label>
-
                   <input
                     id="password"
                     type="password"
                     className="form-control"
-                    placeholder="Enter your password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     required
@@ -112,13 +96,12 @@ const Login = () => {
                   className="btn btn-primary w-100"
                   disabled={loading}
                 >
-                  {loading ? "Logging In..." : "Login"}
+                  {loading ? "Logging in..." : "Login"}
                 </button>
               </form>
 
               <p className="text-center mt-4 mb-0">
-                Don't have an account?{" "}
-                <Link to="/signup">Sign Up</Link>
+                Don't have an account? <Link to="/signup">Sign up</Link>
               </p>
             </div>
           </div>
