@@ -68,6 +68,12 @@ const App = () => {
               element={<Tasks />}
             />
           </Route>
+          <Route element={<ProtectedRoute />}>
+  <Route
+    path="/auth-test"
+    element={<h1>Authentication Successful</h1>}
+  />
+</Route>
 
           {/* Handle unknown URLs */}
           <Route
