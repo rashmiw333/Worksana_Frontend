@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
 
@@ -6,43 +7,45 @@ const Tasks = () => {
   const { token } = useAuth();
 
   const [tasks, setTasks] = useState([]);
+  const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
   const [priority, setPriority] = useState("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        setLoading(true);
-        setError("");
+  // Fetch all tasks
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-        const response = await fetch("http://localhost:5000/tasks", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+      const response = await fetch("http://localhost:5000/tasks", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-        const data = await response.json();
+      const data = await response.json();
 
-        if (!response.ok) {
-          throw new Error(data.message || "Unable to fetch tasks.");
-        }
-
-        const taskList = Array.isArray(data) ? data : data.tasks;
-
-        if (!Array.isArray(taskList)) {
-          throw new Error("Unexpected task response from the server.");
-        }
-
-        setTasks(taskList);
-      } catch (err) {
-        setError(err.message || "Unable to load tasks.");
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to fetch tasks.");
       }
-    };
 
+      const taskList = Array.isArray(data) ? data : data.tasks;
+
+      if (!Array.isArray(taskList)) {
+        throw new Error("Unexpected task response from the server.");
+      }
+
+      setTasks(taskList);
+    } catch (err) {
+      setError(err.message || "Unable to load tasks.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (token) {
       fetchTasks();
     } else {
@@ -51,24 +54,81 @@ const Tasks = () => {
     }
   }, [token]);
 
+  // Search and filter tasks
   const filteredTasks = tasks.filter((task) => {
+    const matchesSearch = task.name
+      ?.toLowerCase()
+      .includes(search.toLowerCase());
+
     const matchesStatus =
       status === "All" || task.status === status;
 
     const matchesPriority =
       priority === "All" || task.priority === priority;
 
-    return matchesStatus && matchesPriority;
+    return matchesSearch && matchesStatus && matchesPriority;
   });
+
+  // Delete a task
+  const deleteTask = async (id) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this task?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`http://localhost:5000/tasks/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to delete task.");
+      }
+
+      setTasks((previousTasks) =>
+        previousTasks.filter((task) => task._id !== id)
+      );
+    } catch (err) {
+      setError(err.message || "Unable to delete task.");
+    }
+  };
 
   return (
     <>
       <Navbar />
 
       <div className="container py-4">
-        <h2 className="mb-4">Tasks</h2>
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2 className="mb-0">Task Management</h2>
 
+          <Link to="/tasks/add" className="btn btn-primary">
+            + Add Task
+          </Link>
+        </div>
+
+        {/* Search and Filters */}
         <div className="row g-3 mb-4">
+          <div className="col-md-4">
+            <label htmlFor="search" className="form-label">
+              Search Tasks
+            </label>
+
+            <input
+              id="search"
+              type="text"
+              className="form-control"
+              placeholder="Search by task name..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+
           <div className="col-md-4">
             <label htmlFor="status" className="form-label">
               Filter by Status
@@ -107,12 +167,14 @@ const Tasks = () => {
           </div>
         </div>
 
+        {/* Loading and Error Messages */}
         {loading && <p>Loading tasks...</p>}
 
         {error && (
           <div className="alert alert-danger">{error}</div>
         )}
 
+        {/* Task Table */}
         {!loading && !error && (
           <>
             <p className="text-muted">
@@ -126,9 +188,11 @@ const Tasks = () => {
                     <th>Task Name</th>
                     <th>Project</th>
                     <th>Team</th>
+                    <th>Assigned To</th>
                     <th>Due Date</th>
                     <th>Priority</th>
                     <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
 
@@ -136,25 +200,73 @@ const Tasks = () => {
                   {filteredTasks.map((task) => (
                     <tr key={task._id}>
                       <td>{task.name}</td>
+
                       <td>
                         {task.project?.name || "Not available"}
                       </td>
+
                       <td>
                         {task.team?.name || "Not available"}
                       </td>
+
+                      <td>
+                        {task.owners?.length > 0
+                          ? task.owners.map((owner) => owner.name).join(", ")
+                          : "Unassigned"}
+                      </td>
+
                       <td>
                         {task.dueDate
                           ? new Date(task.dueDate).toLocaleDateString()
                           : "Not set"}
                       </td>
-                      <td>{task.priority}</td>
+
+                      <td>
+                        <span
+                          className={`badge ${
+                            task.priority === "High"
+                              ? "bg-danger"
+                              : task.priority === "Medium"
+                              ? "bg-warning text-dark"
+                              : "bg-success"
+                          }`}
+                        >
+                          {task.priority}
+                        </span>
+                      </td>
+
                       <td>{task.status}</td>
+
+                      <td>
+                        <div className="d-flex gap-2">
+                          <Link
+                            to={`/tasks/${task._id}`}
+                            className="btn btn-sm btn-outline-primary"
+                          >
+                            View
+                          </Link>
+
+                          <Link
+                            to={`/tasks/edit/${task._id}`}
+                            className="btn btn-sm btn-outline-warning"
+                          >
+                            Edit
+                          </Link>
+
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => deleteTask(task._id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
 
                   {filteredTasks.length === 0 && (
                     <tr>
-                      <td colSpan="6" className="text-center py-4">
+                      <td colSpan="8" className="text-center py-4">
                         No tasks found.
                       </td>
                     </tr>
