@@ -99,6 +99,41 @@ const Tasks = () => {
     }
   };
 
+  const handleDelete = async (taskId) => {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this task?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `http://localhost:5000/tasks/${taskId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to delete task.");
+    }
+
+    setTasks((previousTasks) =>
+      previousTasks.filter((task) => task._id !== taskId)
+    );
+
+    alert("Task deleted successfully!");
+  } catch (error) {
+    alert(error.message);
+  }
+};
   return (
     <>
       <Navbar />

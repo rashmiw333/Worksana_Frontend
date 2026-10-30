@@ -14,6 +14,9 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login"; 
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
+import AddTask from "./pages/AddTask";
+import EditTask from "./pages/EditTask";
+import TaskDetails from "./pages/TaskDetails";
 
 // Redirect logged-in users away from Login and Signup
 const PublicRoute = ({ children }) => {
@@ -67,19 +70,27 @@ const App = () => {
               path="/tasks"
               element={<Tasks />}
             />
+
+            <Route path="/tasks/add" element={<AddTask />} />
+
+            <Route path="/tasks/edit/:id" element={<EditTask />}/>
+
+            <Route path="/tasks/:id" element={<TaskDetails />} />
+
           </Route>
+
           <Route element={<ProtectedRoute />}>
-  <Route
-    path="/auth-test"
-    element={<h1>Authentication Successful</h1>}
-  />
-</Route>
+           <Route path="/auth-test" element={<h1>Authentication Successful</h1>}/>
+          </Route>
 
           {/* Handle unknown URLs */}
           <Route
             path="*"
             element={<Navigate to="/login" replace />}
           />
+
+          
+
         </Routes>
       </BrowserRouter>
     </AuthProvider>
